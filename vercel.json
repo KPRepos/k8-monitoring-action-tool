@@ -1,5 +1,18 @@
-"builds": [
-        {
-            "src": "./k8-monitoring.py",
-        }
-    ],
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "k8-monitoring.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "k8-monitoring.py"
+    }
+  ],
+  "env": {
+    "FLASK_APP": "k8-monitoring.py"
+  }
+}
