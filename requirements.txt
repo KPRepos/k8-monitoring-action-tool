@@ -1,0 +1,6 @@
+Flask
+kubernetes
+requests
+jsonpickle
+APScheduler
+Flask-Session
