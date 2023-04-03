@@ -1,15 +1,5 @@
-{
-    "version": 2,
-    "builds": [
+"builds": [
         {
             "src": "./k8-monitoring.py",
-            "use": "@vercel/python"
         }
     ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "/"
-        }
-    ]
-}
