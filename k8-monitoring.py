@@ -94,23 +94,38 @@ print("<----------------->")
 print(f"Un-Healthy pod deletion threshold set to {POD_BAD_STATE_THRESHOLD}")
 print("<----------------->")
 print("")
+
 def main(kubeconfig=None):
+
     global delete_only_pods_global
     global pauseActions
     statements = []
-    if kubeconfig:
-        # Use the specified kubeconfig file
-        config.load_kube_config(kubeconfig)
-    else:
-        # Use the default kubeconfig file
-        config.load_kube_config()
+    try:
+        if kubeconfig:
+            # Use the specified kubeconfig file
+            config.load_kube_config(kubeconfig)
+        else:
+            # Use the default kubeconfig file
+            config.load_kube_config()
+    except Exception as e:
+        print("Local kubeconfig not loaded:", e)
+        return
     
     # Create a Kubernetes API client
     api_client = client.CoreV1Api()
     apps_v1_api = client.AppsV1Api()  # Add this line to create an AppsV1Api client
 
+
     # List all the Pods in all namespaces
-    pods = api_client.list_pod_for_all_namespaces(watch=False)
+
+    try:
+        # List all the Pods in all namespaces
+        pods = api_client.list_pod_for_all_namespaces(watch=False)
+    except Exception as e:
+        print("Local kubeconfig is unhealthy, cannot connect to cluster:", e)
+        return
+    
+
     print_pod_status  = []
     # Loop through the Pods and perform actions on those in a bad state
     statements_bad = []
