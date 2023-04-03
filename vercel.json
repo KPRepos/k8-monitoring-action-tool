@@ -1,5 +1,15 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "./k8-monitoring" }
-  ]
+    "version": 2,
+    "builds": [
+        {
+            "src": "./k8-monitoring.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/"
+        }
+    ]
 }
