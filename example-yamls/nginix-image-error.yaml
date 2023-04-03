@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wrong-image-app
+spec:
+  selector:
+    matchLabels:
+      app: wrong-image-app
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: wrong-image-app
+    spec:
+      containers:
+      - name: wrong-image-app
+        image: nginx:1.133324.2
+        ports:
+        - containerPort: 80
+
+#Working
+#        image: nginx:1.14.2

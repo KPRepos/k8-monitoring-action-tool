@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<div id="notification" style="display: none;"></div>
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <style>
+        /* Set the width of the table */
+        table {
+            width: 35%;
+        }
+
+        /* Enable word wrapping for the table cells */
+        td {
+            word-wrap: break-word;
+        }
+        /* Set the width of the div elements */
+        .my-2 {
+            width: 35%;
+            margin-left: 10%;
+        }
+    </style>
+    <title>Pod Status</title>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1 class="mt-5 mb-5">Pod Status</h1>
+    <div class="mb-5"></div>
+    <div id="notification" style="display: none;"></div>
+        <button id="toggle-delete-only-pods-btn" onclick="toggleDeleteOnlyPods()">Delete Only Pods: OFF</button>
+        <h2>Upload Kubeconfig</h2>
+        <label for="cluster-count">Number of Clusters:</label>
+        <input type="number" id="cluster-count" min="1" value="1">
+        <button onclick="createUploadFields()">Set Clusters</button>
+        <button id="pause-actions-btn" onclick="togglePauseActions()">Pause Actions: OFF</button>
+        <form action="/upload_kubeconfig" method="POST" enctype="multipart/form-data" id="kubeconfig-form">
+            <!-- Upload fields will be generated here -->
+        </form>
+        <div id="notification" style="display: none;"></div>
+
+        <script>
+
+            async function toggleDeleteOnlyPods() {
+                const btn = document.getElementById("toggle-delete-only-pods-btn");
+                const currentState = btn.innerHTML.includes("ON");
+                btn.innerHTML = `Delete Only Pods: ${currentState ? "OFF" : "ON"}`;
+
+                await fetch('/toggle_delete_only_pods', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ delete_only_pods: !currentState }),
+                });
+            }
+
+            async function setPauseActions(value) {
+                await fetch('/set_pause_actions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pauseActions: value }),
+                });
+            }
+
+            async function togglePauseActions() {
+                const btn = document.getElementById("pause-actions-btn");
+                const currentState = btn.innerHTML.includes("ON");
+                btn.innerHTML = `Pause Actions: ${currentState ? "OFF" : "ON"}`;
+                await setPauseActions(!currentState);
+            }
+
+            function createUploadFields() {
+                const clusterCount = document.getElementById('cluster-count').value;
+                const form = document.getElementById('kubeconfig-form');
+
+                // Clear the existing form content
+                form.innerHTML = '';
+
+                // Create upload fields based on the cluster count
+                for (let i = 1; i <= clusterCount; i++) {
+                    const label = document.createElement('label');
+                    label.innerHTML = `Cluster ${i}: `;
+                    form.appendChild(label);
+
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.name = `kubeconfig_${i}`;
+                    input.accept = '.yaml,.yml';
+                    form.appendChild(input);
+
+                    form.appendChild(document.createElement('br'));
+                }
+
+                // Create the submit button
+                const submitButton = document.createElement('button');
+                submitButton.type = 'submit';
+                submitButton.innerHTML = 'Upload';
+                form.appendChild(submitButton);
+            }
+            function showNotification(message) {
+                    if (!("Notification" in window)) {
+                        alert("This browser does not support desktop notifications.");
+                    } else if (Notification.permission === "granted") {
+                        new Notification(message);
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(function (permission) {
+                            if (permission === "granted") {
+                                new Notification(message);
+                            }
+                        });
+                    }
+                }
+
+            // Initialize the upload fields with the default value
+            createUploadFields();
+
+        </script>
+<!-- 
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script>
+            $(document).ready(function () {
+                $('.delete-pod-btn').click(function (e) {
+                    e.preventDefault();
+
+                    const form = $(this).closest('.delete-pod-form');
+                    const namespace = form.find('input[name="namespace"]').val();
+                    const pod_name = form.find('input[name="pod_name"]').val();
+
+                    $.ajax({
+                        url: "{{ url_for('delete_pod_force') }}",
+                        method: 'POST',
+                        data: {
+                            namespace: namespace,
+                            pod_name: pod_name
+                        },
+                        success: function (response) {
+                            alert(response);
+                        },
+                        error: function (error) {
+                            console.error('Error:', error);
+                        }
+                    });
+                });
+            });
+        </script> -->
+
+            <!-- Config upload functionality -->
+    </div>
+
+{% for filename, pods in pods_dict.items() %}
+<div class="my-2">
+    <h3>{{ filename }}</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col">Namespace</th>
+                <th scope="col">Pod Name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Elapsed Time</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if pods %}
+            <div id="notification" style="display: none;"></div>
+                {% for pod in pods %}
+            <div id="notification" style="display: none;"></div>
+                <tr>
+                    <td>{{ pod.namespace }}</td>
+                    <td>{{ pod.name }}</td>
+                    <td>{{ pod.status }}</td>
+                    <td>{{ pod.elapsed_time }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_pod') }}" method="POST">
+                            <input type="hidden" name="namespace" value="{{ pod.namespace }}">
+                            <input type="hidden" name="pod_name" value="{{ pod.name }}">
+                            <button type="submit" class="btn btn-danger">Kill</button>
+                        </form>
+                        <form action="{{ url_for('delete_pod_force') }}" method="POST">
+                            <input type="hidden" name="namespace" value="{{ pod.namespace }}">
+                            <input type="hidden" name="pod_name" value="{{ pod.name }}">
+                            <button type="submit" class="btn btn-danger">Force-Kill</button>
+                        </form>
+
+                    </td>
+                </tr>
+                {% endfor %}
+                <!-- <p>No pods found.</p> -->
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz4fnFO9gybBud9bB4TO4n8S2F4f4d7MgEeY1XC8e2DTr4D4/jX9l4m4sz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-cn7l7gDp0eyniUwwAZgrzD06kc/tftFf19TOAs2zVinnD/C7E91j9yyk5//jjpt/" crossorigin="anonymous"></script>
+  </body>
+</html>
