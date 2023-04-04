@@ -9,12 +9,14 @@ from threading import Lock
 from kubernetes.client import ApiException
 from kubernetes.client import AppsV1Api
 import argparse
-
+from flask_socketio import SocketIO, emit
 
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+socketio = SocketIO(app)
+
 
 # Create the argument parser
 parser = argparse.ArgumentParser()
@@ -283,11 +285,32 @@ def main(kubeconfig=None):
             # print_list_items(statements)
             # print("########################")
     print("########################")
+    formatted_output = f"Server received: ########################".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
+
+    formatted_output = "Server received:<br>" + "<br>".join(statements)
+    socketio.emit('output', formatted_output, namespace="/")
+
+    # formatted_output = f"Server received: {statements}"
+    # socketio.emit('output', formatted_output, namespace="/")
+
     print_list_items(statements)
     print("########################")
     print("")
+    formatted_output = f"Server received: ########################".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
+    formatted_output = f"Server received:   ".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
+    formatted_output = f"Server received: {statements_bad}".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
     print_list_items(statements_bad)
     print("")
+    formatted_output = f"Server received:" "  ".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
+
+
+# formatted_output = f"Server received: {statements}"
+# socketio.emit('output', formatted_output, namespace="/")
 
 # print_list_items(statements)
 # Call the main function with the kubeconfig file path, if provided
@@ -386,7 +409,10 @@ def get_pod_status(kubeconfig=None):
         #print(f"Pod {pod.metadata.name} in namespace {pod.metadata.namespace} is in {pod.status.phase} state ")
         #print(pod_status_list)
         add_print_statements(statements, f"Pod {pod.metadata.name} in namespace {pod.metadata.namespace} is in {pod.status.phase} state ")
+    formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
+    socketio.emit('output', formatted_output, namespace="/")
     return pod_status_list
+    
  # Schedule main function to run every 10 seconds
 scheduler = BackgroundScheduler()
 scheduler.add_job(main, 'interval', seconds=10)
@@ -426,7 +452,9 @@ def upload_kubeconfig():
                 pod_status_list = get_pod_status(kubeconfig=file_path)  # Pass the correct kubeconfig file path
                 # print(pod_status_list)
                 print("bbbbbbbbbbbbbbbbbb")
-                pod_status_dict[filename] = pod_status_list  # Store the results in the dictionary
+                pod_status_dict[filename] = pod_status_list
+                formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
+                socketio.emit('output', formatted_output, namespace="/")# Store the results in the dictionary
                 # print(pod_status_dict)
 
 
@@ -473,7 +501,8 @@ def index():
     return render_template('home.html', pods_dict={}, delete_only_pods=delete_only_pods)
 
 if __name__ == '__main__':
-    app.run()
+    # app.run()
+    socketio.run(app, debug=True)
         # time.sleep(10) 
 
 # pods_dict = {}
