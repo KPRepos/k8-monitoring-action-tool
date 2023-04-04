@@ -3,6 +3,37 @@
 <div id="notification" style="display: none;"></div>
 
 <head>
+
+    <title>Python Console Output in Browser</title>
+
+    <style>
+        h4 {
+            position: absolute;
+            right: 0;
+            width: 50%;
+            text-align: center;
+        }
+
+        #output {
+            position: absolute;
+            right: 2%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50%;
+            height: 600px;
+            border: 3px solid blue;
+            overflow-y: scroll;
+        }
+
+        /* #output {
+            transform: translateY(-50%);
+            margin-left: 50%;
+            width: 40%;
+            height: 300px;
+            border: 3px solid blue;
+            overflow-y: scroll;
+        } */
+    </style>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -21,8 +52,8 @@
         }
         /* Set the width of the div elements */
         .my-2 {
-            width: 35%;
-            margin-left: 10%;
+            width: 40%;
+            margin-left: 3%;
         }
     </style>
     <title>Pod Status</title>
@@ -30,10 +61,46 @@
 
 <body>
 
-    <div class="container">
-        <h1 class="mt-5 mb-5">Pod Status</h1>
-    <div class="mb-5"></div>
-    <div id="notification" style="display: none;"></div>
+    <pre id="output"></pre>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('output', function (msg) {
+            const output = document.getElementById('output');
+            output.insertAdjacentHTML('beforeend', msg + '<br>');
+            output.scrollTop = output.scrollHeight;
+        });
+
+        socket.emit('message', 'Hello, server!');
+    </script>
+
+
+
+
+
+    <!-- <h4>Console Output</h4>
+    <div id="output"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    socket.on('output', function (msg) {
+        const output = document.getElementById('output');
+        output.insertAdjacentHTML('beforeend', msg + '<br>');
+        output.scrollTop = output.scrollHeight;
+    });
+
+
+        socket.emit('message', 'Hello, server!');
+    </script> -->
+    <div style="margin-left: 2%;">
+        <div class="container">
+            <h1 class="mt-5 mb-5">Pod's Status</h1>
+        <div class="mb-5"></div>
+    </div>
+    <div style="margin-left: 3%;">
+        <div id="notification" style="display: none;"></div>
         <button id="toggle-delete-only-pods-btn" onclick="toggleDeleteOnlyPods()">Delete Only Pods: OFF</button>
         <h2>Upload Kubeconfig</h2>
         <label for="cluster-count">Number of Clusters:</label>
@@ -44,7 +111,7 @@
             <!-- Upload fields will be generated here -->
         </form>
         <div id="notification" style="display: none;"></div>
-
+    </div>
         <script>
 
             async function toggleDeleteOnlyPods() {
@@ -171,9 +238,9 @@
         </thead>
         <tbody>
             {% if pods %}
-            <div id="notification" style="display: none;"></div>
+            <!-- <div id="notification" style="display: none;"></div> -->
                 {% for pod in pods %}
-            <div id="notification" style="display: none;"></div>
+            <!-- <div id="notification" style="display: none;"></div> -->
                 <tr>
                     <td>{{ pod.namespace }}</td>
                     <td>{{ pod.name }}</td>
