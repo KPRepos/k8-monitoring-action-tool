@@ -4,3 +4,6 @@ requests
 jsonpickle
 APScheduler
 Flask-Session
+argparse
+SocketIO
+flask-socketio
