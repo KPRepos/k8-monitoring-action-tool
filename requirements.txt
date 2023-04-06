@@ -7,3 +7,4 @@ Flask-Session
 flask-socketio
 eks-token
 boto3
+wheel
