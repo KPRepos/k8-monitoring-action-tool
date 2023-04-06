@@ -17,6 +17,7 @@ import eks_token
 import tempfile
 import base64
 import kubernetes
+import yaml
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -102,8 +103,15 @@ print("<----------------->")
 print(f"Un-Healthy pod deletion threshold set to {POD_BAD_STATE_THRESHOLD}")
 print("<----------------->")
 print("")
-def main(kubeconfig=None):
-
+def main(kubeconfig=None, cafile=None):
+    print(cafile)
+    print("^^^^")
+    # cafile.seek(0)
+    # # Read the content of the file
+    # cafile_content = cafile.read()
+    # # Print the content
+    # print("Below is content")
+    # print(cafile_content)
     global delete_only_pods_global
     global pauseActions
     statements = []
@@ -141,27 +149,51 @@ def main(kubeconfig=None):
 
         cluster_name = 'eks-lab'
         my_token = eks_token.get_token(cluster_name)
-        print(my_token)
+        # print(my_token)
 
 
         # ------------------------------------------------------
         # 3_cafile.py
         # ------------------------------------------------------
 
-        def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
-            # protect yourself from automatic deletion
-            cafile = tempfile.NamedTemporaryFile(delete=False)
-            cadata_b64 = data
-            cadata = base64.b64decode(cadata_b64)
-            cafile.write(cadata)
-            cafile.flush()
-            print(cafile)
-            return cafile
+        # def parse_kubeconfig(kubeconfig_file: str) -> str:
+        #     with open(kubeconfig_file, 'r') as file:
+        #         kubeconfig_data = yaml.safe_load(file)
 
+        #     certificate_authority_data = kubeconfig_data['clusters'][0]['cluster']['certificate-authority-data']
+        #     return certificate_authority_data
+
+
+        # def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+        #     # protect yourself from automatic deletion
+        #     cafile = tempfile.NamedTemporaryFile(delete=False)
+        #     cadata_b64 = data
+        #     cadata = base64.b64decode(cadata_b64)
+        #     cafile.write(cadata)
+        #     cafile.flush()
+        #     print(cafile)
+        #     return cafile
+
+        # You can call this function to parse the kubeconfig file and get the certificate-authority-data
+        # For example, if the kubeconfig file is named 'kubeconfig.yaml':
+        # certificate_authority_data = parse_kubeconfig('kubeconfig.yaml')
+
+        # Then, pass the certificate_authority_data to the _write_cafile function
+        # cafile = _write_cafile(certificate_authority_data)
 
         bclient = boto3.client('eks', region_name="us-west-2")
         cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
         my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
+        my_cafile = cafile
+        print(cafile)
+        print("Tesgggggggg")
+        print(my_cafile.name)
+        print("Tebbbbbbbbbb")
+        print(my_token['status']['token'])
+        print("Tesnnnnnnnn")
+            # Create a Kubernetes API client
+        api_client = client.CoreV1Api()
+        apps_v1_api = client.AppsV1Api()  # Add this line to create an AppsV1Api client
 
         api_client = k8s_api_client(
             endpoint=cluster_data['endpoint'],
@@ -361,63 +393,37 @@ def main(kubeconfig=None):
 
 # print_list_items(statements)
 # Call the main function with the kubeconfig file path, if provided
-if args.kubeconfig:
-    main(args.kubeconfig)
-else:
-    main()
+# if args.kubeconfig:
+#     main(args.kubeconfig, cafile=cafile)
+# else:
+#     main()
 
-def get_pod_status(kubeconfig=None):
+
+# if args.kubeconfig and args.cafile:
+#     print(cafile.name)
+#     # Read the content of the file
+#     # cafile_content = args.cafile.read()
+#     # # Print the content
+#     # print("vvvvvv content")
+#     # print(cafile_content)
+#     # print("bbbbbb  content")
+#     main(args.kubeconfig, args.cafile)
+# elif args.kubeconfig:
+#     # print("nnnnnnnnnnnnnnnnnnnnnn content")
+#     # print("")
+#     main(args.kubeconfig)
+# else:
+#     print("empty")
+#     main()
+
+
+def get_pod_status(kubeconfig=None, cafile=None):
+
     statements = []
     if kubeconfig:
         # Use the specified kubeconfig file
         # config.load_kube_config(kubeconfig)
-
-        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
-            kconfig = kubernetes.config.kube_config.Configuration(
-                host=endpoint,
-                api_key={'authorization': 'Bearer ' + token}
-            )
-            kconfig.ssl_ca_cert = cafile
-            kclient = kubernetes.client.ApiClient(configuration=kconfig)
-            print("1")
-            return kubernetes.client.CoreV1Api(api_client=kclient)
-
-
-        # ------------------------------------------------------
-        # 2_token.py
-        # ------------------------------------------------------
-        
-
-        cluster_name = 'eks-lab'
-        my_token = eks_token.get_token(cluster_name)
-        print(my_token)
-
-
-        # ------------------------------------------------------
-        # 3_cafile.py
-        # ------------------------------------------------------
-
-        def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
-            # protect yourself from automatic deletion
-            cafile = tempfile.NamedTemporaryFile(delete=False)
-            cadata_b64 = data
-            cadata = base64.b64decode(cadata_b64)
-            cafile.write(cadata)
-            cafile.flush()
-            print(cafile)
-            return cafile
-
-
-        bclient = boto3.client('eks', region_name="us-west-2")
-        cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
-        my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
-
-        api_client = k8s_api_client(
-            endpoint=cluster_data['endpoint'],
-            token=my_token['status']['token'],
-            cafile=my_cafile.name
-        )
-
+        config.load_kube_config(kubeconfig)
     else:
         # Use the default kubeconfig file
         config.load_kube_config()
@@ -526,6 +532,27 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'yaml', 'yml'}
+
+def parse_kubeconfig(kubeconfig_file: str) -> str:
+    with open(kubeconfig_file, 'r') as file:
+        kubeconfig_data = yaml.safe_load(file)
+
+    certificate_authority_data = kubeconfig_data['clusters'][0]['cluster']['certificate-authority-data']
+    return certificate_authority_data
+
+def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+    # protect yourself from automatic deletion
+    cafile = tempfile.NamedTemporaryFile(delete=False)
+    cadata_b64 = data
+    cadata = base64.b64decode(cadata_b64)
+    cafile.write(cadata)
+    cafile.flush()
+    print("outertest")
+    print(cafile)
+    return cafile
+
 
 @app.route('/upload_kubeconfig', methods=['POST'])
 def upload_kubeconfig():
@@ -539,15 +566,36 @@ def upload_kubeconfig():
             filename = f"{file.filename}"
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
+            # Extract the certificate-authority-data from the uploaded kubeconfig file
+            certificate_authority_data = parse_kubeconfig(file_path)
+
+            # Pass the extracted certificate_authority_data to the _write_cafile function
+            cafile = _write_cafile(certificate_authority_data)
+
+            # print(cafile.data)
+            print("innertest")
+            # Seek to the beginning of the file
+            cafile.seek(0)
+
+            #Read the content of the file
+            cafile_content = cafile.read()
+
+            # Print the content
+            print("Below is content")
+            print(cafile_content)
+            print("Above is content")
+            # Rest of the code remains the same
             # print("ffffff")
             # print(file_path)
             print("fffffffffffffff")
-            pod_status_list = get_pod_status(kubeconfig=file_path)  # Pass the correct kubeconfig file path
+            # pod_status_list = get_pod_status(kubeconfig=file_path) 
+            pod_status_list = main(kubeconfig=file_path, cafile=cafile) 
+ # Pass the correct kubeconfig file path
             # print(pod_status_list)
             print("bbbbbbbbbbbbbbbbbb")
-            pod_status_dict[filename] = pod_status_list
-            formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
-            socketio.emit('output', formatted_output, namespace="/")# Store the results in the dictionary
+            # pod_status_dict[filename] = pod_status_list
+            # formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
+            # socketio.emit('output', formatted_output, namespace="/")# Store the results in the dictionary
             # print(pod_status_dict)
 
 
