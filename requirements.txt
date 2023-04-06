@@ -5,6 +5,5 @@ jsonpickle
 APScheduler
 Flask-Session
 flask-socketio
-logging
 eks-token
 boto3
