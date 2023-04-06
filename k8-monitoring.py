@@ -10,7 +10,13 @@ from kubernetes.client import ApiException
 from kubernetes.client import AppsV1Api
 import argparse
 from flask_socketio import SocketIO, emit
-
+import eks_token
+import boto3
+import logging
+import eks_token
+import tempfile
+import base64
+import kubernetes
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -96,7 +102,6 @@ print("<----------------->")
 print(f"Un-Healthy pod deletion threshold set to {POD_BAD_STATE_THRESHOLD}")
 print("<----------------->")
 print("")
-
 def main(kubeconfig=None):
 
     global delete_only_pods_global
@@ -112,21 +117,63 @@ def main(kubeconfig=None):
     except Exception as e:
         print("Local kubeconfig not loaded:", e)
         return
-    
-    # Create a Kubernetes API client
-    api_client = client.CoreV1Api()
-    apps_v1_api = client.AppsV1Api()  # Add this line to create an AppsV1Api client
 
 
     # List all the Pods in all namespaces
 
     try:
+
+        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
+            kconfig = kubernetes.config.kube_config.Configuration(
+                host=endpoint,
+                api_key={'authorization': 'Bearer ' + token}
+            )
+            kconfig.ssl_ca_cert = cafile
+            kclient = kubernetes.client.ApiClient(configuration=kconfig)
+            print("1")
+            return kubernetes.client.CoreV1Api(api_client=kclient)
+
+
+        # ------------------------------------------------------
+        # 2_token.py
+        # ------------------------------------------------------
+        
+
+        cluster_name = 'eks-lab'
+        my_token = eks_token.get_token(cluster_name)
+        print(my_token)
+
+
+        # ------------------------------------------------------
+        # 3_cafile.py
+        # ------------------------------------------------------
+
+        def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+            # protect yourself from automatic deletion
+            cafile = tempfile.NamedTemporaryFile(delete=False)
+            cadata_b64 = data
+            cadata = base64.b64decode(cadata_b64)
+            cafile.write(cadata)
+            cafile.flush()
+            print(cafile)
+            return cafile
+
+
+        bclient = boto3.client('eks', region_name="us-west-2")
+        cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
+        my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
+
+        api_client = k8s_api_client(
+            endpoint=cluster_data['endpoint'],
+            token=my_token['status']['token'],
+            cafile=my_cafile.name
+        )
+
         # List all the Pods in all namespaces
         pods = api_client.list_pod_for_all_namespaces(watch=False)
     except Exception as e:
         print("Local kubeconfig is unhealthy, cannot connect to cluster:", e)
         return
-    
 
     print_pod_status  = []
     # Loop through the Pods and perform actions on those in a bad state
@@ -323,7 +370,54 @@ def get_pod_status(kubeconfig=None):
     statements = []
     if kubeconfig:
         # Use the specified kubeconfig file
-        config.load_kube_config(kubeconfig)
+        # config.load_kube_config(kubeconfig)
+
+        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
+            kconfig = kubernetes.config.kube_config.Configuration(
+                host=endpoint,
+                api_key={'authorization': 'Bearer ' + token}
+            )
+            kconfig.ssl_ca_cert = cafile
+            kclient = kubernetes.client.ApiClient(configuration=kconfig)
+            print("1")
+            return kubernetes.client.CoreV1Api(api_client=kclient)
+
+
+        # ------------------------------------------------------
+        # 2_token.py
+        # ------------------------------------------------------
+        
+
+        cluster_name = 'eks-lab'
+        my_token = eks_token.get_token(cluster_name)
+        print(my_token)
+
+
+        # ------------------------------------------------------
+        # 3_cafile.py
+        # ------------------------------------------------------
+
+        def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+            # protect yourself from automatic deletion
+            cafile = tempfile.NamedTemporaryFile(delete=False)
+            cadata_b64 = data
+            cadata = base64.b64decode(cadata_b64)
+            cafile.write(cadata)
+            cafile.flush()
+            print(cafile)
+            return cafile
+
+
+        bclient = boto3.client('eks', region_name="us-west-2")
+        cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
+        my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
+
+        api_client = k8s_api_client(
+            endpoint=cluster_data['endpoint'],
+            token=my_token['status']['token'],
+            cafile=my_cafile.name
+        )
+
     else:
         # Use the default kubeconfig file
         config.load_kube_config()
@@ -419,7 +513,7 @@ scheduler.add_job(main, 'interval', seconds=10)
 scheduler.start()
 
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = {'yaml', 'yml'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -435,33 +529,29 @@ def allowed_file(filename):
 
 @app.route('/upload_kubeconfig', methods=['POST'])
 def upload_kubeconfig():
-    try:
-        uploaded_files = [file for file in request.files.values()]
-        if not uploaded_files:
-            return redirect(request.url)
-        pod_status_dict = {}
-        for file in uploaded_files:
-            
-            if file and allowed_file(file.filename):
-                filename = f"{file.filename}"
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                # print("ffffff")
-                # print(file_path)
-                print("fffffffffffffff")
-                pod_status_list = get_pod_status(kubeconfig=file_path)  # Pass the correct kubeconfig file path
-                # print(pod_status_list)
-                print("bbbbbbbbbbbbbbbbbb")
-                pod_status_dict[filename] = pod_status_list
-                formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
-                socketio.emit('output', formatted_output, namespace="/")# Store the results in the dictionary
-                # print(pod_status_dict)
+    uploaded_files = [file for file in request.files.values()]
+    if not uploaded_files:
+        return redirect(request.url)
+    pod_status_dict = {}
+    for file in uploaded_files:
+        
+        if file and allowed_file(file.filename):
+            filename = f"{file.filename}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            # print("ffffff")
+            # print(file_path)
+            print("fffffffffffffff")
+            pod_status_list = get_pod_status(kubeconfig=file_path)  # Pass the correct kubeconfig file path
+            # print(pod_status_list)
+            print("bbbbbbbbbbbbbbbbbb")
+            pod_status_dict[filename] = pod_status_list
+            formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
+            socketio.emit('output', formatted_output, namespace="/")# Store the results in the dictionary
+            # print(pod_status_dict)
 
 
-        return render_template('home.html', pods_dict=pod_status_dict)
-    except Exception as e:
-            logger.exception("Error in upload_kubeconfig route:")
-            return render_template('error.html', error_message="The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application."), 500
+    return render_template('home.html', pods_dict=pod_status_dict)
 
 
 @app.route('/delete_pod', methods=['POST'])
