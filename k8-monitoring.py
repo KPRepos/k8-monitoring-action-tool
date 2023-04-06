@@ -193,7 +193,9 @@ def main(kubeconfig=None, cafile=None, cafile_content=None):
         # cafile = _write_cafile(certificate_authority_data)
 
         bclient = boto3.client('eks', region_name="us-west-2")
-        cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
+        # cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
+        # print(cluster_data['endpoint'])
+        endpoint_test = "https://EF92831CF0D76D49409D0D05F30F7883.gr7.us-west-2.eks.amazonaws.com"
         # my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
         my_cafile = cafile_content
         print(cafile_content)
@@ -213,14 +215,14 @@ def main(kubeconfig=None, cafile=None, cafile_content=None):
 
         
         api_client = k8s_api_client(
-            endpoint=cluster_data['endpoint'],
+            endpoint=endpoint_test,
             token=my_token['status']['token'],
             cafile=cafile
         )
         print("ddddddd")
         # List all the Pods in all namespaces
         pods = api_client.list_pod_for_all_namespaces(watch=False)
-        print(pods)
+        # print(pods)
     except Exception as e:
         print("Local kubeconfig is unhealthy, cannot connect to cluster:", e)
         return
