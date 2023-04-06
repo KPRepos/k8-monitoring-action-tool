@@ -142,7 +142,7 @@ def main(kubeconfig=None, cafile=None, cafile_content=None):
 
     try:
 
-        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.AppsV1Api:
+        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
             kconfig = kubernetes.config.kube_config.Configuration(
                 host=endpoint,
                 api_key={'authorization': 'Bearer ' + token}
@@ -150,6 +150,7 @@ def main(kubeconfig=None, cafile=None, cafile_content=None):
             kconfig.ssl_ca_cert = cafile
             kclient = kubernetes.client.ApiClient(configuration=kconfig)
             print("1")
+            print(kclient)
             return kubernetes.client.CoreV1Api(api_client=kclient)
 
 
@@ -222,7 +223,7 @@ def main(kubeconfig=None, cafile=None, cafile_content=None):
         print("ddddddd")
         # List all the Pods in all namespaces
         pods = api_client.list_pod_for_all_namespaces(watch=False)
-        # print(pods)
+        print(pods)
     except Exception as e:
         print("Local kubeconfig is unhealthy, cannot connect to cluster:", e)
         return
