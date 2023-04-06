@@ -103,8 +103,19 @@ print("<----------------->")
 print(f"Un-Healthy pod deletion threshold set to {POD_BAD_STATE_THRESHOLD}")
 print("<----------------->")
 print("")
-def main(kubeconfig=None, cafile=None):
+
+def save_cafile_to_temp(cafile_content):
+    with tempfile.NamedTemporaryFile(delete=False) as temp_cafile:
+        temp_cafile.write(cafile_content)
+        temp_cafile.flush()
+        return temp_cafile.name
+
+
+
+def main(kubeconfig=None, cafile=None, cafile_content=None):
     print(cafile)
+    print("above")
+    print(cafile_content)
     print("^^^^")
     # cafile.seek(0)
     # # Read the content of the file
@@ -131,7 +142,7 @@ def main(kubeconfig=None, cafile=None):
 
     try:
 
-        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
+        def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.AppsV1Api:
             kconfig = kubernetes.config.kube_config.Configuration(
                 host=endpoint,
                 api_key={'authorization': 'Bearer ' + token}
@@ -183,26 +194,33 @@ def main(kubeconfig=None, cafile=None):
 
         bclient = boto3.client('eks', region_name="us-west-2")
         cluster_data = bclient.describe_cluster(name=cluster_name)['cluster']
-        my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
-        my_cafile = cafile
-        print(cafile)
+        # my_cafile = _write_cafile(cluster_data['certificateAuthority']['data'])
+        my_cafile = cafile_content
+        print(cafile_content)
         print("Tesgggggggg")
-        print(my_cafile.name)
+        # print(my_cafile.name)
         print("Tebbbbbbbbbb")
         print(my_token['status']['token'])
         print("Tesnnnnnnnn")
             # Create a Kubernetes API client
-        api_client = client.CoreV1Api()
-        apps_v1_api = client.AppsV1Api()  # Add this line to create an AppsV1Api client
+        # api_client = client.CoreV1Api()
+        # apps_v1_api = client.AppsV1Api(
+        #     endpoint=cluster_data['endpoint'],
+        #     token=my_token['status']['token'],
+        #     cafile=cafile_content
+        # )  # Add this line to create an AppsV1Api client
+        print("ccccccc")
 
+        
         api_client = k8s_api_client(
             endpoint=cluster_data['endpoint'],
             token=my_token['status']['token'],
-            cafile=my_cafile.name
+            cafile=cafile
         )
-
+        print("ddddddd")
         # List all the Pods in all namespaces
         pods = api_client.list_pod_for_all_namespaces(watch=False)
+        print(pods)
     except Exception as e:
         print("Local kubeconfig is unhealthy, cannot connect to cluster:", e)
         return
@@ -278,11 +296,11 @@ def main(kubeconfig=None, cafile=None):
                                             print(f"Failed to delete Deployment {deployment.metadata.name}: {e}")
                                         break
                     # Log the bad state and delete the Pod
-                    print("########################")
+                    print("########################4")
                     print("")
                     print(f"Pod {pod.metadata.name} in namespace {pod.metadata.namespace} is in CrashLoopBackOff state for more than {elapsed_minutes:.2f} minutes")
                     print(f"Deleting Pod {pod.metadata.name} in namespace {pod.metadata.namespace}")
-                    print("########################")
+                    print("########################5")
                     print("")
                     api_client.delete_namespaced_pod(pod.metadata.name, pod.metadata.namespace, body=client.V1DeleteOptions(grace_period_seconds=0, propagation_policy='Background'))
                     print("")
@@ -360,12 +378,12 @@ def main(kubeconfig=None, cafile=None):
             
             print_pod_status.append(f"Pod {pod.metadata.name} in namespace {pod.metadata.namespace} is in {pod.status.phase} state ")
             add_print_statements(statements, "Pod {0} in namespace {1} is in {2} state".format(pod.metadata.name, pod.metadata.namespace, pod.status.phase))
-            # print("########################")
-            # print_list_items(statements)
-            # print("########################")
-    print("########################")
-    formatted_output = f"Server received: ########################".replace('\n', '<br>')
-    socketio.emit('output', formatted_output, namespace="/")
+            print("########################a")
+            print_list_items(statements)
+            print("########################b")
+    print("#####################1")
+    # formatted_output = f"Server received: #####################".replace('\n', '<br>')
+    # socketio.emit('output', formatted_output, namespace="/")
 
     formatted_output = "Server received:<br>" + "<br>".join(statements)
     socketio.emit('output', formatted_output, namespace="/")
@@ -374,9 +392,9 @@ def main(kubeconfig=None, cafile=None):
     # socketio.emit('output', formatted_output, namespace="/")
 
     print_list_items(statements)
-    print("########################")
+    print("########################2")
     print("")
-    formatted_output = f"Server received: ########################".replace('\n', '<br>')
+    formatted_output = f"Server received: ########################3".replace('\n', '<br>')
     socketio.emit('output', formatted_output, namespace="/")
     formatted_output = f"Server received:   ".replace('\n', '<br>')
     socketio.emit('output', formatted_output, namespace="/")
@@ -589,9 +607,15 @@ def upload_kubeconfig():
             # print(file_path)
             print("fffffffffffffff")
             # pod_status_list = get_pod_status(kubeconfig=file_path) 
-            pod_status_list = main(kubeconfig=file_path, cafile=cafile) 
+
+            # Inside your upload_kubeconfig() function:
+            cafile_path = save_cafile_to_temp(cafile_content)
+            print(cafile_path)
+            pod_status_list = main(kubeconfig=file_path, cafile=cafile_path, cafile_content=cafile_content)
+
+            # pod_status_list = main(kubeconfig=file_path, cafile_content=cafile_content) 
  # Pass the correct kubeconfig file path
-            # print(pod_status_list)
+            print(pod_status_list)
             print("bbbbbbbbbbbbbbbbbb")
             # pod_status_dict[filename] = pod_status_list
             # formatted_output = f"Server received: {pod_status_list}".replace('\n', '<br>')
