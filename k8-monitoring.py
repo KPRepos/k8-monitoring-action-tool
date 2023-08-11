@@ -260,7 +260,20 @@ def main(kubeconfig=None):
                         print(f"Deleting Pod {pod.metadata.name} in namespace {pod.metadata.namespace}")
                         print("")
                         api_client.delete_namespaced_pod(pod.metadata.name, pod.metadata.namespace, body=client.V1DeleteOptions(grace_period_seconds=0, propagation_policy='Foreground'))
+        # Check if the Pod is in the Pending state and has container statuses
+        elif pod.status.phase == "Pending":
 
+            # Fetch events related to the pod
+            pod_events = api_client.list_namespaced_event(pod.metadata.namespace, field_selector=f"involvedObject.name={pod.metadata.name}")
+            
+            # Check for "FailedScheduling" events
+            failed_scheduling_events = [event for event in pod_events.items if event.reason == "FailedScheduling"]
+            
+            if failed_scheduling_events:
+                # Log the issue (or any other action)
+                add_print_statements(statements_bad, f"Pod {pod.metadata.name} in namespace {pod.metadata.namespace} has failed scheduling events.")
+                
+  
         if pod.metadata.deletion_timestamp != None and pod.status.phase == "Running":
             state = 'Terminating'
             print("Pod {0} in namespace {1} is in Terminating state".format(pod.metadata.name, pod.metadata.namespace))
